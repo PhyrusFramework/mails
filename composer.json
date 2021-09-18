@@ -1,0 +1,20 @@
+{
+    "name": "phyrus/mails",
+    "version": "0.0.4",
+    "description": "Phyrus Mails module",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Phyrus",
+            "email": "framework@phyrus.org"
+        }
+    ],
+    "autoload": {
+        "files": ["/index.php"]
+    },
+    "require": {
+        "phyrus/framework": "^0.0.4",
+        "phpmailer/phpmailer": "^6.5"
+    }
+}
