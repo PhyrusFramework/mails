@@ -1,4 +1,6 @@
 <?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class Mail {
 
@@ -24,9 +26,8 @@ class Mail {
     private static function templatesDir() : string {
         $check = Config::get('templates.mails');
         if (empty($check)) {
-            Config::save('templates.mails', '/mails');
-            Folder::instance(Path::project() . '/mails')->create();
-            return '/mails';
+            include(__DIR__ . '/install.php');
+            return Config::get('templates.mails');
         }
         return $check;
     }
@@ -43,7 +44,7 @@ class Mail {
             'content' => '',
             'charset' => 'UTF-8'
         ]);
-        ;
+
         if (!empty($ops['smtp'])) {
 
             $ops['smtp'] = arr($ops['smtp'])->force([
@@ -65,57 +66,67 @@ class Mail {
 
     /**
      * Send email.
+     * 
+     * @return Promise
      */
-    public function send() {
+    public function send() : Promise {
 
-        $mail = new PHPMailer($this->exceptions);
+        return new Promise(function($resolve, $reject) {
 
-        try {
-            if (is_array($this->smtp)) {
+            $mail = new PHPMailer($this->exceptions);
 
-                $mail->isSMTP();
-                $mail->SMTPDebug = $this->smtp['debug'];
-                $mail->Host       = $this->smtp['host'];
-                $mail->SMTPAuth   = $this->smtp['auth'];
-                $mail->Username   = $this->smtp['username'];
-                $mail->Password   = $this->smtp['password'];
-                $mail->SMTPSecure = $this->smtp['secure'];
-                $mail->Port       = $this->smtp['port'];
-            }
-
-            if (is_array($this->from)) {
-                foreach($this->from as $k => $v) {
-                    $mail->setFrom($v, $k);
+            try {
+                if (is_array($this->smtp)) {
+    
+                    $mail->isSMTP();
+                    $mail->SMTPDebug = $this->smtp['debug'];
+                    $mail->Host       = $this->smtp['host'];
+                    $mail->SMTPAuth   = $this->smtp['auth'];
+                    $mail->Username   = $this->smtp['username'];
+                    $mail->Password   = $this->smtp['password'];
+                    $mail->SMTPSecure = $this->smtp['secure'];
+                    $mail->Port       = $this->smtp['port'];
                 }
-            } else {
-                $mail->setFrom($this->from);
-            }
-
-            if (isset($this->receivers)) {
-                foreach($this->receivers as $receiver) {
-                    if (is_string($receiver)) {
-                        $mail->addAddress($receiver);
-                    } else if (is_array($receiver)){
-                        $addr = $receiver['address'];
-                        $name = $receiver['name'];
-                        $mail->addAddress($addr, $name);
+    
+                if (is_array($this->from)) {
+                    foreach($this->from as $k => $v) {
+                        $mail->setFrom($v, $k);
+                    }
+                } else {
+                    $mail->setFrom($this->from);
+                }
+    
+                if (isset($this->receivers)) {
+                    foreach($this->receivers as $receiver) {
+                        if (is_string($receiver)) {
+                            $mail->addAddress($receiver);
+                        } else if (is_array($receiver)){
+                            $addr = $receiver['address'];
+                            $name = $receiver['name'];
+                            $mail->addAddress($addr, $name);
+                        }
                     }
                 }
-            }
+    
+                // Content
+                if ($this->html)
+                    $mail->isHTML(true);                                  // Set email format to HTML
+                $mail->CharSet = $this->charset;
+                $mail->Subject = $this->subject;
+                $mail->Body    = $this->content;
 
-            // Content
-            if ($this->html)
-                $mail->isHTML(true);                                  // Set email format to HTML
-            $mail->CharSet = $this->charset;
-            $mail->Subject = $this->subject;
-            $mail->Body    = $this->content;
-
-            $mail->send();
-        } catch (Exception $e) {
-            if (self::$onError != null) {
-                self::$onError($e);
+                if ($mail->send()) {
+                    $resolve();
+                } else {
+                    $reject('mail could not be send');
+                }
+    
+            } catch (Exception $e) {
+                $reject($e->getMessage());
             }
-        }
+    
+
+        });
 
     }
 
@@ -134,53 +145,9 @@ class Mail {
         if (!file_exists($file)) return;
 
         $content = file_get_contents($file);
-        $this->{'content'} = $this->generateContent($variables);
-    }
-
-    /**
-     * Places variables into string.
-     * 
-     * @param string $content
-     * @param array $variables
-     */
-    private function generateContent(string $content, array $variables = []) {
-        $aux = '';
-        $in = false;
-        $last = '';
-        $current = '';
-        for($i = 0; $i<strlen($content); ++$i) {
-
-            $ch = $content[$i];
-
-            if ($current == '{' && $last == '{') {
-                $in = true;
-                $last = '';
-            }
-            else if ($current == '}' && $last == '}') {
-                $in = false;
-
-                $tr = trim($current);
-                if (isset($variables[$tr]))
-                    $aux .= $variables[$tr];
-                else
-                    $aux .= "{{$current}}";
-
-                $current = false;
-                $last = '';
-            }
-            else if ($in) {
-                $current .= $last;
-                $last = $ch;
-            }
-            else {
-                $aux .= $last;
-                $last = $ch;
-            }
-
-        }
-        $aux .= $last;
-
-        return $aux;
+        $this->{'content'} = Text::instance($content)->replacer('{{', '}}', function($param) use ($variables) {
+            return $variables[$param] ?? $param;
+        });
     }
 
     /**
