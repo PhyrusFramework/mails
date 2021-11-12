@@ -1,6 +1,6 @@
 {
     "name": "phyrus/mails",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "Phyrus Mails module",
     "type": "library",
     "license": "MIT",
@@ -14,7 +14,7 @@
         "files": ["/index.php"]
     },
     "require": {
-        "phyrus/framework": "^0.0.5",
+        "phyrus/framework": "~0.0.6",
         "phpmailer/phpmailer": "^6.5"
     }
 }
