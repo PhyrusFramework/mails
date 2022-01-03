@@ -2,18 +2,11 @@
 
 if (Config::get('development_mode')) {
 
-    if (Config::get('templates') == null) {
-
-        Config::save('templates', [
-            'mails' => '/mails'
+    if (Config::get('mails') == null) {
+        Config::save('mails', [
+            'templates' => '/mails',
+            'smtp' => null
         ]);
-
-    } else {
-
-        $t = Config::get('templates');
-        $t['mails'] = '/mails';
-        Config::save('templates', $t);
-
     }
 
     $path = Path::project() . '/mails';

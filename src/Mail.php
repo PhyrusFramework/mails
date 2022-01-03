@@ -24,7 +24,7 @@ class Mail {
      * @return string
      */
     private static function templatesDir() : string {
-        $check = Config::get('templates.mails');
+        $check = Config::get('mails.templates');
         if (empty($check)) {
             include(__DIR__ . '/install.php');
             return Config::get('templates.mails');
@@ -45,17 +45,23 @@ class Mail {
             'charset' => 'UTF-8'
         ]);
 
-        if (!empty($ops['smtp'])) {
+        $smtpDefaults = [
+            'host' => '',
+            'auth' => true,
+            'username' => '',
+            'password' => '',
+            'secure' => 'tls',
+            'port' => 587,
+            'debug' => 2
+        ];
 
-            $ops['smtp'] = arr($ops['smtp'])->force([
-                'host' => '',
-                'auth' => true,
-                'username' => '',
-                'password' => '',
-                'secure' => 'tls',
-                'port' => 587,
-                'debug' => 2
-            ]);
+        if (!empty($ops['smtp'])) {
+            $ops['smtp'] = arr($ops['smtp'])->force($smtpDefaults);
+        } else {
+            $smpt = Config::get('mails.smtp');
+            if ($smtp != null) {
+                $ops['smtp'] = arr($smtp)->force($smtpDefaults);
+            }
         }
 
         foreach($ops as $k => $v) {
@@ -89,9 +95,7 @@ class Mail {
                 }
     
                 if (is_array($this->from)) {
-                    foreach($this->from as $k => $v) {
-                        $mail->setFrom($v, $k);
-                    }
+                    $mail->setFrom($this->from[0], $this->from[1]);
                 } else {
                     $mail->setFrom($this->from);
                 }
