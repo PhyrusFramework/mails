@@ -58,7 +58,7 @@ class Mail {
         if (!empty($ops['smtp'])) {
             $ops['smtp'] = arr($ops['smtp'])->force($smtpDefaults);
         } else {
-            $smpt = Config::get('mails.smtp');
+            $smtp = Config::get('mails.smtp');
             if ($smtp != null) {
                 $ops['smtp'] = arr($smtp)->force($smtpDefaults);
             }
@@ -142,7 +142,7 @@ class Mail {
      */
     public function loadTemplate(string $name, array $variables = []) {
 
-        $path = Path::project() . self::templatesDir();
+        $path = Path::root() . self::templatesDir();
         if (!is_dir($path)) return;
 
         $file = "$path/$name";
